@@ -1,5 +1,6 @@
 const app = require("express")();
 require("dotenv").config();
+const socketSetup = require("./src/socket");
 
 async function startServer() {
   try {
@@ -21,6 +22,7 @@ async function startServer() {
   app.use("/api/v1", require("./src/routes"));
 
   const server = require("http").createServer(app);
+  const io = socketSetup(server);
   const PORT = process.env.PORT;
   server.listen(PORT, () => {
     console.log("application running on Port: ", PORT || 3000);
