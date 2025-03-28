@@ -1,6 +1,6 @@
 const app = require("express")();
 require("dotenv").config();
-const socketSetup = require("./src/socket");
+const { socketSetup } = require("./src/socket");
 
 async function startServer() {
   try {

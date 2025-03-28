@@ -2,6 +2,8 @@ const socketIo = require("socket.io");
 const Chat = require("./models/chat");
 const { auth } = require("./middlewares");
 
+let io;
+
 const socketSetup = (server) => {
   const io = socketIo(server, {
     cors: { origin: "*" },
@@ -28,4 +30,11 @@ const socketSetup = (server) => {
   return io;
 };
 
-module.exports = socketSetup;
+function getIO() {
+  if (!io) {
+    throw new Error("Socket.io not initialized!");
+  }
+  return io;
+}
+
+module.exports = { socketSetup, getIO };
