@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const FriendRequest = require("./models/friendRequest");
 const { auth } = require("./middlewares");
-const User = require("../models/User");
+const User = require("./models/users");
 
 // Send a friend request
 router.post("/send/:receiverId", auth, async (req, res) => {
