@@ -5,7 +5,7 @@ const router = express.Router();
 // ✅ Get Logged-in User's Profile
 const getMyProfileDetails = async (req, res) => {
   try {
-    const userId = req.user.id; // Extract user ID from JWT token
+    const userId = req.user._id; // Extract user ID from JWT token
 
     const user = await User.findById(userId).select("-password"); // Exclude password
     if (!user) {
