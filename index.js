@@ -1,4 +1,5 @@
 const app = require("express")();
+const cors = require("cors");
 require("dotenv").config();
 const { socketSetup } = require("./src/socket");
 
@@ -17,6 +18,7 @@ async function startServer() {
 
   // parse application/json
   app.use(bodyParser.json());
+  app.use(cors());
 
   // Routes
   app.use("/api/v1", require("./src/routes"));
