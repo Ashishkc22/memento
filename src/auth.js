@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcrypt");
+const { auth } = require("./middlewares"); // Assuming you have an auth middleware for authentication
 const User = require("./models/users"); // Path to your user model
 const { body, validationResult } = require("express-validator");
 const jwt = require("jsonwebtoken");
@@ -104,6 +105,7 @@ router.post(
 // @access  Private (Assuming you handle authentication middleware separately)
 router.put(
   "/update/:id",
+  auth,
   [
     body("username").optional().isString(),
     body("fullName").optional().isString(),

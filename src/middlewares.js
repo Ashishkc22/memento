@@ -25,12 +25,10 @@ const auth = (req, res, next) => {
 };
 
 // ✅ Authentication Socket Middleware
-const socketAuth = (req, res, next) => {
-  const token = socket.handshake.auth?.token?.split(" ")[1]; // Extract Bearer token
+const socketAuth = (socket, next) => {
+  const token = socket.handshake.auth.token; // Extract Bearer token
   if (!token) {
-    return res
-      .status(401)
-      .json({ message: "Access Denied. No token provided." });
+    return next(new Error("Access Denied. No token provided."));
   }
 
   try {
@@ -38,10 +36,10 @@ const socketAuth = (req, res, next) => {
       token,
       process.env.JWT_SECRET || "your_jwt_secret"
     );
-    req.user = decoded; // Attach user info to the request
+    socket.user = decoded; // Attach user info to the request
     next();
   } catch (err) {
-    res.status(400).json({ message: "Invalid token" });
+    return next(new Error("Invalid token"));
   }
 };
 
@@ -100,4 +98,5 @@ const upload = multer({
 module.exports = {
   auth,
   upload,
+  socketAuth,
 };

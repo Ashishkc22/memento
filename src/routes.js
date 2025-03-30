@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const { upload, auth } = require("./middlewares");
 
-router.use("/auth", auth, require("./auth"));
+router.use("/auth", require("./auth"));
 router.use("/post", auth, require("./post"));
 router.use("/profile", auth, require("./profile"));
 router.use("/search", auth, require("./search"));

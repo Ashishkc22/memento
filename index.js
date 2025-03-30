@@ -22,7 +22,21 @@ async function startServer() {
   app.use("/api/v1", require("./src/routes"));
 
   const server = require("http").createServer(app);
-  const io = socketSetup(server);
+  socketSetup(server);
+  // const { Server } = require("socket.io");
+  // const io = new Server(server, {
+  //   path: "/",
+  //   cors: {
+  //     origin: "*",
+  //   },
+  //   methods: ["GET", "POST"],
+  //   /* options */
+  // });
+  // console.log("Socket.io initialized");
+  // io.on("connection", (socket) => {
+  //   console.log("New user connected:", socket.id);
+  // });
+
   const PORT = process.env.PORT;
   server.listen(PORT, () => {
     console.log("application running on Port: ", PORT || 3000);

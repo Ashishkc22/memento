@@ -21,13 +21,10 @@ async function connectDB() {
     // require("dotenv").config();
     const mongoose = require("mongoose");
     mongoose.set("strictQuery", true);
-    return await mongoose.connect(
-      process.env.MONGO_DEV_URL || defaultMongoUrl,
-      {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      }
-    );
+    return await mongoose.connect(process.env.MONGO_DEV_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
   } catch (error) {
     throw error || new Error("Failed to connect to DB.");
   }
