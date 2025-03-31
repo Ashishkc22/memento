@@ -12,10 +12,13 @@ const getMyProfileDetails = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.status(200).json({ message: "Profile details fetched", user });
+    res.status(200).json({
+      message: "Profile details fetched",
+      user,
+    });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-router.get("my-profile-details", getMyProfileDetails);
+router.get("/my-profile-details", getMyProfileDetails);
 module.exports = router;
