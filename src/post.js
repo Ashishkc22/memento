@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Post = require("./models/post");
+const User = require("./models/users");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
@@ -26,7 +27,14 @@ const deleteFile = (filePath) => {
 
 // Multer setup
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/posts/"),
+  destination: (req, file, cb) => {
+    const dir = path.join("uploads/posts/");
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
   filename: (req, file, cb) => {
     const fileName = `${Date.now()}-${req.user._id}-${file.originalname}`;
     req.imageName = fileName; // Store the filename in req for later use
@@ -121,4 +129,38 @@ router.get("/my-posts", async (req, res) => {
   }
 });
 
+// @route   GET /api/v1/posts/friends
+// @desc    Get posts from the user and their friends sorted by likes and createdAt with pagination
+// @access  Private
+router.get("/posts/friends", async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { page = 1, limit = 50 } = req.query;
+
+    // Get the current user and their friends list
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const friendsList = user.following; // Assuming following represents friends
+
+    // Fetch posts from the user and their friends with pagination
+    const posts = await Post.find({
+      createdBy: { $in: [userId, ...friendsList] },
+    })
+      .sort({ likes: -1, createdAt: -1 }) // Sort by likes descending, then createdAt descending
+      .populate("createdBy", "username fullName profilePicture") // Populate creator details
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .lean();
+
+    res
+      .status(200)
+      .json({ page: parseInt(page), limit: parseInt(limit), posts });
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 module.exports = router;
