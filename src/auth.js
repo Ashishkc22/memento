@@ -5,10 +5,9 @@ const { auth } = require("./middlewares"); // Assuming you have an auth middlewa
 const User = require("./models/users"); // Path to your user model
 const { body, validationResult } = require("express-validator");
 const jwt = require("jsonwebtoken");
-const generateToken = (payload) => {
-  const secret = process.env.JWT_SECRET; // Replace with your secret key (keep it safe!)
-  const expiresIn = "7d"; // Token expiry duration
 
+const generateToken = (payload, expiresIn = "7d") => {
+  const secret = process.env.JWT_SECRET; // Replace with your secret key (keep it safe!)
   const token = jwt.sign(payload, secret, { expiresIn });
   return token;
 };
@@ -151,5 +150,124 @@ router.put(
     }
   }
 );
+
+const nodemailer = require("nodemailer");
+
+// Email Transporter (NodeMailer)
+const transporter = nodemailer.createTransport({
+  service: process.env.NODE_MAILER_SERVICE,
+  host: process.env.NODE_MAILER_HOST,
+  port: process.env.NODE_MAILER_PORT,
+  secure: false,
+  auth: {
+    user: process.env.NODE_MAILER_AUTH_USERNAME,
+    pass: process.env.NODE_MAILER_AUTH_PASSWORD,
+  },
+});
+
+// Generate Random OTP
+const generateOTP = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+// **1. Forgot Password - Send OTP**
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Generate OTP & Expiration
+    const otp = generateOTP();
+    user.otp = otp;
+    user.otpExpires = Date.now() + 10 * 60 * 1000; // 10 mins expiry
+
+    // Send Email
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Password Reset OTP",
+      text: `Your OTP for password reset is: ${otp}`,
+    });
+    await user.save();
+
+    res.json({ message: "OTP sent to email" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
+
+// @route   POST /api/user/verify-otp
+// @desc    Verify OTP and generate JWT token
+// @access  Public
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if OTP is valid and not expired
+    if (user.otp !== otp || user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    // Generate JWT token
+    const token = generateToken(
+      {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+      },
+      "1hr"
+    );
+
+    // Store the token in the user model
+    user.token = token;
+    user.otp = undefined; // Remove OTP after successful verification
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: "OTP verified successfully", token });
+  } catch (error) {
+    console.error("OTP Verification Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Reset Password using Token
+router.post("/reset-password", async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  try {
+    if (!token) {
+      return res.status(400).json({ message: "Token is required" });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    // Find user by ID from token payload
+    const user = await User.findById(decoded._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ message: "Password reset successful" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
 
 module.exports = router;
