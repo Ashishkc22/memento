@@ -3,6 +3,9 @@ const router = express.Router();
 const bcrypt = require("bcrypt");
 const { auth } = require("./middlewares"); // Assuming you have an auth middleware for authentication
 const User = require("./models/users"); // Path to your user model
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 const { body, validationResult } = require("express-validator");
 const jwt = require("jsonwebtoken");
 
@@ -49,11 +52,57 @@ router.post("/login", async (req, res) => {
   }
 });
 
+const deleteFile = (filePath) => {
+  const fullPath = path.join(__dirname, filePath);
+
+  fs.access(filePath, fs.constants.F_OK, (err) => {
+    if (err) {
+      console.error("File not found:", filePath);
+      return;
+    }
+
+    fs.unlink(filePath, (err) => {
+      if (err) {
+        console.error("Error deleting file:", err);
+      } else {
+        console.log("File deleted successfully:", filePath);
+      }
+    });
+  });
+};
+
+// Multer setup
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = path.join("uploads/profileImages");
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const fileName = `${Date.now()}-${req.body.email}-${file.originalname}`;
+    req.imageName = fileName; // Store the filename in req for later use
+    cb(null, fileName);
+  },
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png/;
+    const valid = allowed.test(path.extname(file.originalname).toLowerCase());
+    valid ? cb(null, true) : cb("Only jpeg, jpg, png images allowed");
+  },
+});
+
 // @route   POST /api/user/signup
 // @desc    User Signup
 // @access  Public
 router.post(
   "/signup",
+  upload.single("image"),
   [
     body("username").notEmpty().withMessage("Username is required"),
     body("fullName").notEmpty().withMessage("Full Name is required"),
@@ -64,13 +113,12 @@ router.post(
   ],
   async (req, res) => {
     // Validate input
-    const errors = validationResult(req);
+    const errors = validationResult(req.body);
     if (!errors.isEmpty()) {
+      deleteFile(`uploads/posts/${req.imageName}`); // Delete the uploaded file if text is not provided
       return res.status(400).json({ errors: errors.array() });
     }
-
     const { username, fullName, email, password } = req.body;
-
     try {
       // Check if user exists
       const existingUser = await User.findOne({ email });
@@ -87,6 +135,7 @@ router.post(
         fullName,
         email,
         password: hashedPassword,
+        profilePicture: req.file ? req.imageName : null,
       });
 
       await newUser.save();
@@ -97,6 +146,7 @@ router.post(
       res.status(500).json({ message: "Server Error" });
     }
   }
+  // Use multer to handle image upload
 );
 
 // @route   PUT /api/user/update/:id
