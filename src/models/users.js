@@ -82,6 +82,9 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    token: { type: String },
+    otp: { type: String }, // OTP for password reset
+    otpExpires: { type: Date }, // OTP Expiration time
   },
   { timestamps: true }
 );
