@@ -132,7 +132,7 @@ router.get("/my-posts", async (req, res) => {
 // @route   GET /api/v1/posts/friends
 // @desc    Get posts from the user and their friends sorted by likes and createdAt with pagination
 // @access  Private
-router.get("/posts/friends", async (req, res) => {
+router.get("/get-posts", async (req, res) => {
   try {
     const userId = req.user._id;
     const { page = 1, limit = 50 } = req.query;
@@ -147,10 +147,10 @@ router.get("/posts/friends", async (req, res) => {
 
     // Fetch posts from the user and their friends with pagination
     const posts = await Post.find({
-      createdBy: { $in: [userId, ...friendsList] },
+      user: { $in: [userId, ...friendsList] },
     })
       .sort({ likes: -1, createdAt: -1 }) // Sort by likes descending, then createdAt descending
-      .populate("createdBy", "username fullName profilePicture") // Populate creator details
+      .populate("user", "username fullName profilePicture") // Populate creator details
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
       .lean();

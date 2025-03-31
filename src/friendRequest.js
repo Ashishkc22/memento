@@ -1,17 +1,24 @@
 const express = require("express");
 const router = express.Router();
 const FriendRequest = require("./models/friendRequest");
-const { auth } = require("./middlewares");
 const User = require("./models/users");
 
+//user A - send following request to user B
+//user B - accept following request from user A
+
 // Send a friend request
-router.post("/send/:receiverId", auth, async (req, res) => {
+router.post("/send/:receiverId", async (req, res) => {
   try {
     const { receiverId } = req.params;
 
+    const user = await User.findById(receiverId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
     // Check if the friend request already exists
     const existingRequest = await FriendRequest.findOne({
-      sender: req.user.id,
+      sender: req.user._id,
       receiver: receiverId,
     });
 
@@ -20,7 +27,7 @@ router.post("/send/:receiverId", auth, async (req, res) => {
     }
 
     const friendRequest = new FriendRequest({
-      sender: req.user.id,
+      sender: req.user._id,
       receiver: receiverId,
     });
 
@@ -32,7 +39,7 @@ router.post("/send/:receiverId", auth, async (req, res) => {
 });
 
 // Accept a friend request
-router.post("/accept/:requestId", auth, async (req, res) => {
+router.post("/accept/:requestId", async (req, res) => {
   try {
     const { requestId } = req.params;
 
@@ -40,13 +47,22 @@ router.post("/accept/:requestId", auth, async (req, res) => {
     if (!friendRequest) {
       return res.status(404).json({ message: "Friend request not found." });
     }
-
-    if (friendRequest.receiver.toString() !== req.user.id) {
+    if (friendRequest.status !== "pending") {
+      return res
+        .status(400)
+        .json({ message: "Friend request already processed." });
+    }
+    if (friendRequest.receiver.toString() !== req.user._id) {
       return res.status(403).json({ message: "Unauthorized action." });
     }
-
+    const user = await User.findById(req.user._id);
+    const senderUser = await User.findById(friendRequest.sender);
     friendRequest.status = "accepted";
-    await friendRequest.save();
+    user.followers.push(friendRequest.sender);
+    senderUser.following.push(req.user._id);
+    await senderUser.save();
+    await user.save();
+    await friendRequest.save({ update: true });
 
     res.json({ message: "Friend request accepted.", friendRequest });
   } catch (err) {
@@ -55,7 +71,7 @@ router.post("/accept/:requestId", auth, async (req, res) => {
 });
 
 // Decline a friend request
-router.post("/decline/:requestId", auth, async (req, res) => {
+router.post("/decline/:requestId", async (req, res) => {
   try {
     const { requestId } = req.params;
 
@@ -78,7 +94,7 @@ router.post("/decline/:requestId", auth, async (req, res) => {
 });
 
 // Get friend requests (sent and received)
-router.get("/requests", auth, async (req, res) => {
+router.get("/requests", async (req, res) => {
   try {
     const sentRequests = await FriendRequest.find({
       sender: req.user.id,

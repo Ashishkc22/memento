@@ -1,4 +1,7 @@
+const express = require("express");
+const path = require("path");
 const app = require("express")();
+
 const cors = require("cors");
 require("dotenv").config();
 const { socketSetup } = require("./src/socket");
@@ -21,8 +24,8 @@ async function startServer() {
   app.use(cors());
 
   // Routes
+  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
   app.use("/api/v1", require("./src/routes"));
-
   const server = require("http").createServer(app);
   socketSetup(server);
   // const { Server } = require("socket.io");

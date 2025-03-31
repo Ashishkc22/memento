@@ -68,4 +68,41 @@ router.delete("/delete/:commentId", async (req, res) => {
   }
 });
 
+// @route   GET /api/comments/:postId
+// @desc    Get all comments for a post with pagination
+// @access  Public (or Private if needed)
+router.get("/get-comments/:postId", async (req, res) => {
+  try {
+    const { postId } = req.params;
+    let { page = 1, limit = 50 } = req.query;
+
+    // Convert page and limit to numbers
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
+
+    const skip = (page - 1) * limit;
+
+    // Find comments for the given postId with pagination
+    const comments = await Comment.find({ post: postId })
+      .sort({ createdAt: -1 }) // Newest comments first
+      .skip(skip)
+      .limit(limit);
+
+    // Get total count of comments for pagination metadata
+    const totalComments = await Comment.countDocuments({ postId });
+
+    res.json({
+      success: true,
+      page,
+      limit,
+      totalComments,
+      totalPages: Math.ceil(totalComments / limit),
+      comments,
+    });
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 module.exports = router;
