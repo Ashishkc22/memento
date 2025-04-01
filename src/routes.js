@@ -7,6 +7,7 @@ router.use("/profile", auth, require("./profile"));
 router.use("/search", auth, require("./search"));
 router.use("/chat", auth, require("./chat"));
 router.use("/message", auth, require("./chat"));
+router.use("/comments", auth, require("./comments"));
 router.use("/friend-request", auth, require("./friendRequest"));
 
 router.use("/upload/profile_pics", upload.single("profilePic"));
