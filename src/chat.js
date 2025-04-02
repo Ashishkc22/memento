@@ -1,13 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const { auth } = require("./middlewares");
+const { Types } = require("mongoose");
 const Chat = require("./models/chat");
+const message = require("./models/message");
 
 // ✅ Create or Get a Private Chat
-router.post("/", auth, async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { receiverId } = req.body;
-    const senderId = req.user.id;
+    const senderId = req.user._id;
 
     let chat = await Chat.findOne({
       members: { $all: [senderId, receiverId] },
@@ -15,7 +17,10 @@ router.post("/", auth, async (req, res) => {
     });
 
     if (!chat) {
-      chat = new Chat({ members: [senderId, receiverId], isGroup: false });
+      chat = new Chat({
+        members: [senderId, receiverId],
+        isGroup: false,
+      });
       await chat.save();
     }
 
@@ -26,7 +31,7 @@ router.post("/", auth, async (req, res) => {
 });
 
 // ✅ Create a Group Chat
-router.post("/group", auth, async (req, res) => {
+router.post("/group", async (req, res) => {
   try {
     const { name, members } = req.body;
     if (!name || members.length < 2) {
@@ -37,9 +42,9 @@ router.post("/group", auth, async (req, res) => {
 
     const chat = new Chat({
       name,
-      members: [...members, req.user.id],
+      members: [...members, req.user._id],
       isGroup: true,
-      createdBy: req.user.id,
+      createdBy: req.user._id,
     });
 
     await chat.save();
@@ -50,11 +55,11 @@ router.post("/group", auth, async (req, res) => {
 });
 
 // ✅ Get All User Chats (Private & Group)
-router.get("/", auth, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const chats = await Chat.find({ members: req.user.id }).populate(
+    const chats = await Chat.find({ members: req.user._id }).populate(
       "members",
-      "name email"
+      "name fullName email profilePicture socketId"
     );
     res.status(200).json(chats);
   } catch (err) {
@@ -63,7 +68,7 @@ router.get("/", auth, async (req, res) => {
 });
 
 // ✅ Add Members to a Group
-router.put("/group/add", auth, async (req, res) => {
+router.put("/group/add", async (req, res) => {
   try {
     const { chatId, newMembers } = req.body;
     const chat = await Chat.findById(chatId);
@@ -72,7 +77,7 @@ router.put("/group/add", auth, async (req, res) => {
       return res.status(404).json({ message: "Group not found" });
     }
 
-    if (chat.createdBy.toString() !== req.user.id) {
+    if (chat.createdBy.toString() !== req.user._id) {
       return res
         .status(403)
         .json({ message: "Only group creator can add members" });
@@ -88,7 +93,7 @@ router.put("/group/add", auth, async (req, res) => {
 });
 
 // ✅ Remove Members from a Group
-router.put("/group/remove", auth, async (req, res) => {
+router.put("/group/remove", async (req, res) => {
   try {
     const { chatId, memberId } = req.body;
     const chat = await Chat.findById(chatId);
@@ -97,7 +102,7 @@ router.put("/group/remove", auth, async (req, res) => {
       return res.status(404).json({ message: "Group not found" });
     }
 
-    if (chat.createdBy.toString() !== req.user.id) {
+    if (chat.createdBy.toString() !== req.user._id) {
       return res
         .status(403)
         .json({ message: "Only group creator can remove members" });
@@ -109,6 +114,44 @@ router.put("/group/remove", auth, async (req, res) => {
     res.status(200).json(chat);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+// @route   GET /api/v1/chats/:receiverId
+// @desc    Get chat history with a specific user
+// @access  Private
+router.get("/messages/:receiverId", auth, async (req, res) => {
+  try {
+    const { receiverId } = req.params;
+    const userId = req.user._id;
+    const { page = 1, limit = 50 } = req.query;
+
+    const chat = await Chat.findOne({
+      members: {
+        $all: [new Types.ObjectId(userId), new Types.ObjectId(receiverId)],
+      },
+    });
+    const messages = await message
+      .find({
+        chatId: chat._id,
+        $or: [
+          { sender: userId, receiverId },
+          { sender: receiverId, receiverId: userId },
+        ],
+      })
+      .sort({ createdAt: 1 }) // Oldest messages first
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .populate("sender", "username fullName profilePicture")
+      .populate("receiverId", "username fullName profilePicture")
+      .lean();
+
+    res
+      .status(200)
+      .json({ messages, page: Number(page), limit: Number(limit) });
+  } catch (error) {
+    console.error("Error fetching chat history:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

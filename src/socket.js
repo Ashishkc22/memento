@@ -1,5 +1,6 @@
 const { Server } = require("socket.io");
 const Chat = require("./models/chat");
+const User = require("./models/users");
 const Message = require("./models/message");
 
 const { socketAuth, auth } = require("./middlewares");
@@ -12,7 +13,7 @@ function formatmessage({ message, user, messageId, chatId }) {
     message,
     createdAt: new Date(),
     sender: user._id,
-    senderName: user.name,
+    senderName: user.fullName,
     messageId,
     chatId,
   };
@@ -28,8 +29,9 @@ let io;
 //check is user is online if online send message delivery status
 async function sendMessage({ socket, data }) {
   try {
-    const { message, chatId, socketId } = data;
+    const { message, chatId, receiverId } = data;
     const { user } = socket;
+    const socketId = onlineUsers[receiverId] || null;
     if (message) {
       if (!chatId) {
         socket.emit("error", "chatId is required");
@@ -48,6 +50,7 @@ async function sendMessage({ socket, data }) {
       }
       const newMessage = new Message({
         sender: user._id,
+        receiverId: chat.members.find((id) => id != user._id),
         chatId: new mongoose.Types.ObjectId(chatId),
         text: message,
       });
@@ -120,6 +123,9 @@ function joinGroup({ socket, data }) {
 async function scoketConnectionHandler(socket) {
   console.log("User connected:", socket.id);
   onlineUsers[socket.user._id.toString()] = socket.id;
+  await User.findByIdAndUpdate(socket.user._id, {
+    socketId: socket.id,
+  });
   // await registerUserSocketId({ user: socket.user, socketId: socket.id });
   socket.on("send_message", (data) => sendMessage({ socket, data }));
   socket.on("send_message_in_group", (data) =>

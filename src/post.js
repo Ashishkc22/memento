@@ -36,7 +36,9 @@ const storage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const fileName = `${Date.now()}-${req.user._id}-${file.originalname}`;
+    const fileName = `${Date.now()}-${
+      req.user._id
+    }-${file?.originalname?.replaceAll(" ", "")}`;
     req.imageName = fileName; // Store the filename in req for later use
     cb(null, fileName);
   },
