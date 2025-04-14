@@ -12,9 +12,9 @@ const getMyProfileDetails = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    user.profilePicture = user?.profilePicture
-      ? `uploads/profileImages/${user.profilePicture}`
-      : ""; // Set default profile picture if not set
+    // user.profilePicture = user?.profilePicture
+    //   ? `uploads/profileImages/${user.profilePicture}`
+    //   : ""; // Set default profile picture if not set
 
     res.status(200).json({
       message: "Profile details fetched",
