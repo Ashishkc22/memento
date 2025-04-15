@@ -10,6 +10,7 @@ router.use("/message", auth, require("./chat"));
 router.use("/comments", auth, require("./comments"));
 router.use("/friend-request", auth, require("./friendRequest"));
 router.use("/jobs", auth, require("./jobs"));
+router.use("/like", auth, require("./likes"));
 
 router.use("/upload/profile_pics", upload.single("profilePic"));
 router.use("/upload/post_images", upload.single("postImage"));

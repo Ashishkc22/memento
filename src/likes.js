@@ -6,7 +6,7 @@ const Comment = require("./models/comments");
 const router = express.Router();
 
 // **1. Like a Post**
-router.post("/like/post/:postId", async (req, res) => {
+router.post("/post/:postId", async (req, res) => {
   try {
     const { postId } = req.params;
     const userId = req.user._id;
@@ -30,7 +30,7 @@ router.post("/like/post/:postId", async (req, res) => {
 });
 
 // **2. Like a Comment**
-router.post("/like/comment/:commentId", async (req, res) => {
+router.post("/comment/:commentId", async (req, res) => {
   try {
     const { commentId } = req.params;
     const userId = req.user._id;
