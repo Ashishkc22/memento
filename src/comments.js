@@ -86,7 +86,8 @@ router.get("/get-comments/:postId", async (req, res) => {
     const comments = await Comment.find({ post: postId })
       .sort({ createdAt: -1 }) // Newest comments first
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .populate("user", "name profilePic"); // Populate user details
 
     // Get total count of comments for pagination metadata
     const totalComments = await Comment.countDocuments({ postId });
