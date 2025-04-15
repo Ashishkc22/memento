@@ -97,11 +97,11 @@ router.post("/decline/:requestId", async (req, res) => {
 router.get("/requests", async (req, res) => {
   try {
     const sentRequests = await FriendRequest.find({
-      sender: req.user.id,
-    }).populate("receiver", "name email");
+      sender: req.user._id,
+    }).populate("receiver", "-password");
     const receivedRequests = await FriendRequest.find({
-      receiver: req.user.id,
-    }).populate("sender", "name email");
+      receiver: req.user._id,
+    }).populate("sender", "-password");
 
     res.json({ sentRequests, receivedRequests });
   } catch (err) {
